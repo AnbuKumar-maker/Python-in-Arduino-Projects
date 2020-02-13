@@ -1,0 +1,122 @@
+Since the object of this lesson is to show what you can do using Python and Vpython, I will not go through the arduino code step-by-step. You can go back to the earlier lessons for more info on the HC-SR04 sensor. The code that will allow the sensor to make distance measurements is presented again here. The one thing to note is that since we are going to be using Python to graphically present the data coming from the sensor, we want to simply send the distance measurement over the serial port, and no words or anything else, just the raw distance measurement. This will simplify things on the Python side. Remember that when we do a Serial.println() command in arduino, we can read whatever is printed into Python
+
+
+int trigPin=13; //Sensor Trig pin connected to Arduino pin 13
+int echoPin=11;  //Sensor Echo pin connected to Arduino pin 11
+float pingTime;  //time for ping to travel from sensor to target and return
+float targetDistance; //Distance to Target in inches
+float speedOfSound=776.5; //Speed of sound in miles per hour when temp is 77 degrees.
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+}
+ 
+void loop() {
+  // put your main code here, to run repeatedly:
+  
+  digitalWrite(trigPin, LOW); //Set trigger pin low
+  delayMicroseconds(2000); //Let signal settle
+  digitalWrite(trigPin, HIGH); //Set trigPin high
+  delayMicroseconds(15); //Delay in high state
+  digitalWrite(trigPin, LOW); //ping has now been sent
+  delayMicroseconds(10); //Delay in low state
+  
+  pingTime = pulseIn(echoPin, HIGH);  //pingTime is presented in microceconds
+  pingTime=pingTime/1000000; //convert pingTime to seconds by dividing by 1000000 (microseconds in a second)
+  pingTime=pingTime/3600; //convert pingtime to hourse by dividing by 3600 (seconds in an hour)
+  targetDistance= speedOfSound * pingTime;  //This will be in miles, since speed of sound was miles per hour
+  targetDistance=targetDistance/2; //Remember ping travels to target and back from target, so you must divide by 2 for actual target distance.
+  targetDistance= targetDistance*63360;    //Convert miles to inches by multipling by 63360 (inches per mile)
+  
+  Serial.println(targetDistance);
+  
+  delay(100); //delay tenth of a  second to slow things down a little.
+}
+
+This code will be constantly sending the distance to the target out over the Serial port.  On the Python side, our first task is to read that data in over the serial port.  To do this, you must import the serial library. 
+You then create a serial object which will be used to read the data. In the sample below, we call the object ‘arduinoSerialData’. We then create a While loop that loops continuously. Inside that loop we check to see if there is any data available on the serial port, and if there is, we read it into the variable myData, and print it.
+
+import serial #Import Serial Library
+
+arduinoSerialData = serial.Serial('com11',9600) #Create Serial port object called arduinoSerialData
+
+
+while (1==1):
+    if (arduinoSerialData.inWaiting()>0):
+        myData = arduinoSerialData.readline()
+        print myData
+        
+Remember than in the line that creates the adruinoSerialData object, you need to change the com port to whatever com port your arduino is sending on. You can see this by looking under tools- port in your arduino IDE window. Also, this format is for windows machines. You would have to adjust for apple computers.
+
+It is important to remember that the command .readline() in Python will read a string, so we need to remember that myData is a string, and if we want to use it as a number we will need to convert it to a float, with something like distance = float (myData). Then distance will be a normal number, not a string.
+
+
+ 
+As a first demonstration lets create an object using the vPython library that is a cylinder. We will need to import the vPython library, and we will create the object before the while loop, and then inside the while loop, we will adjust the length parameter of the cylinder. We will make the cylinder with a length of six inches, we will make it yellow in color, and with a radius of 1/2 inch. Also, when we are using Vpython and dynamically updating a graphic object, inside the loop that is adjusting the graphic, we have to issue a rate() command. The rate command tells vPython how many times a second you want to go through the loop. You need to play with this command, so that it gives smooth graphics for the rate at which the Arduino is sending data. rate(20) is sometimes a good starting point. So, our code now looks like this:
+
+import serial #Import Serial Library
+from visual import * #Import all the vPython library
+
+arduinoSerialData = serial.Serial('com11', 9600) #Create an object for the Serial port. Adjust 'com11' to whatever port your arduino is sending to.
+measuringRod = cylinder( title="My Meter", radius= .5, length=6, color=color.yellow, pos=(-3,0,0))
+while (1==1):  #Create a loop that continues to read and display the data
+    rate(20)#Tell vpython to run this loop 20 times a second
+    if (arduinoSerialData.inWaiting()>0):  #Check to see if a data point is available on the serial port
+        myData = arduinoSerialData.readline() #Read the distance measure as a string
+        print myData #Print the measurement to confirm things are working
+        distance = float(myData) #convert reading to a floating point number
+        measuringRod.length=distance #Change the length of your measuring rod to your last measurement
+        
+So, this is pretty cool! It creates a little rod, and the length of the little rod dynamically changes in response to how far your target is from your sensor. This gives a very nice qualitative visual to what is happening in the real world with your sensor. Often times you also want quantitative indication of the data.  We can do that by adding a label. Before the while loop, we will create a label object called lengthLabel. We will position it up just a little bit, so it is not on top of the measuringRod. We will set the label initially to ‘Target Distance is: ‘. We will also want to set box=false, since we do not want a box around our text. Then, a good height for the label is about 30 pixels. You can play around with all these settings. We create the lengthLabel before the while loop, but then inside the while loop we dynamically update the lengthLabel.text parameter. We set it to our myLabel string, which is dynamically being updated to be the concatination of the string ‘Target Distance is: ‘ and the string myData. Remember, myData is read as a string, and so we use that variable, and not distance, which is a number, not a string. Pulling this together leads to this code:
+
+import serial #Import Serial Library
+from visual import * #Import all the vPython library
+
+arduinoSerialData = serial.Serial('com11', 9600) #Create an object for the Serial port. Adjust 'com11' to whatever port your arduino is sending to.
+measuringRod = cylinder( radius= .5, length=6, color=color.yellow, pos=(-3,0,0))
+lengthLabel = label(pos=(0,1,0), text='Target Distance is: ', box=false, height=30)
+while (1==1):  #Create a loop that continues to read and display the data
+    rate(20)#Tell vpython to run this loop 20 times a second
+    if (arduinoSerialData.inWaiting()>0):  #Check to see if a data point is available on the serial port
+        myData = arduinoSerialData.readline() #Read the distance measure as a string
+        print myData #Print the measurement to confirm things are working
+        distance = float(myData) #convert reading to a floating point number
+        measuringRod.length=distance #Change the length of your measuring rod to your last measurement
+        myLabel= 'Target Distance is: ' + myData #Create label by appending string myData to string
+        lengthLabel.text = myLabel #display updated myLabel on your graphic
+        
+Lets keep playing around with this. The graphic will begin to look more like a’Virtual World’ if we create a box to represent the target we are using in the real world.  I will make the box the dimensions of the real target, which is .2 X 3 X 3. Also, I will make it green, just like the target in the real world. In order to better fill our viewing window, I will move the cylinder down by about 2 inches, so its new position will be (-3,-2,0). For box type objects position is measured from the center, so I will need to also move the target box down by about .5, so it will coincide with the measuring rod. this is because 1/2 the target would be 1.5, and moving down by an additional .5 will make it coincide with the measuringRod.
+
+Finally, I need to dynamically update the position of the target box in the while loop. I will need it to be placed at target.pos=(-3+distance,-.5,0). Along the x-axis this will put it right at the end of the rod, and will keep it properly positioned in y, as before. Bringing all this code together we get:
+
+import serial #Import Serial Library
+from visual import * #Import all the vPython library
+
+arduinoSerialData = serial.Serial('com11', 9600) #Create an object for the Serial port. Adjust 'com11' to whatever port your arduino is sending to.
+measuringRod = cylinder( radius= .1, length=6, color=color.yellow, pos=(-3,-2,0))
+lengthLabel = label(pos=(0,5,0), text='Target Distance is: ', box=false, height=30)
+target=box(pos=(0,-.5,0), length=.2, width=3, height=3, color=color.green)
+while (1==1):  #Create a loop that continues to read and display the data
+    rate(20)#Tell vpython to run this loop 20 times a second
+    if (arduinoSerialData.inWaiting()>0):  #Check to see if a data point is available on the serial port
+        myData = arduinoSerialData.readline() #Read the distance measure as a string
+        print myData #Print the measurement to confirm things are working
+        distance = float(myData) #convert reading to a floating point number
+        measuringRod.length=distance #Change the length of your measuring rod to your last measurement
+        target.pos=(-3+distance,-.5,0)
+        myLabel= 'Target Distance is: ' + myData #Create label by appending string myData to string
+        lengthLabel.text = myLabel #display updated myLabel on your graphic
+        
+Play around with the parameters until you get something you are happy with. Also, you can change your view of the visual once the program is running. Right mouse click and you can change your positional view of the virtual world you have created. Press and scroll the mouse wheel to change the zoom.
+
+OK, you need to start exploring and creating your own virtual world. Go ahead and see if you can create additional objects to make your virtual world more realistic. Try creating a graphic for the sensor itself, and maybe even your PC board and arduino! You can refer to the Vpython site for more details on the 3D objects you can create, and their parameters at:
+
+http://vpython.org/contents/docs/cylinder.html
+
+
+
+
+
