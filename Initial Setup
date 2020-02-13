@@ -1,0 +1,39 @@
+There are some really incredible things we can do when we get our little Arduino to talk to the big bad Python programming language. To do that, we have to start by downloading some software. Never fear . . . it is all free and I will take you step by step through the installation. The video above shows you how to do it. If you are the impatient and technically adept type, you can download these three software packages:
+
+1) Download and Install Python 2.7.8. Please note all my tutorials use this flavor of python. If you want to follow my tutorials, do not download a Python 3.x. Also download 32 bit version of the software, even if you have a 64 bit windows machine.
+2) Download and Install Pyserial version 2.7. Again, download the 32 bit version of the software.
+3) Download and install the Vpython library for 32 bit windows.
+Now, lets get python and arduino talking together. First up, we need a simple program to get the Arduino sending data over the serial port. The following program is a simple program that will have the Arduino count and send the data to the serial port.
+
+int cnt=0;
+void setup() {
+ 
+  Serial.begin(9600);
+  
+}
+
+void loop() {
+  
+  Serial.print("I am Counting to: ");
+  Serial.print(cnt);
+  Serial.println(" Mississippi.");
+  cnt=cnt+1;
+  delay(1000);
+  
+}
+
+Now, open the VIDLE environment which you downloaded with the Vpython library. Once you have done that, you are ready to write a Python Program that will go out and read the data over the serial port. Full explanation is in the video. Do note, however, that the line:
+
+arduinoSerialData = serial.Serial('com11',9600)
+
+This is for a windows machine. Also, the ‘com11’ has to be adjusted and set to whatever com port your arduino is talking on. You can figure that out by looking at Tools – Port on the Arduino. Set this parameter to whatever port your Arduino is talking on. Then, the baud rate needs to match as well. You can use whatever you want by Arduino and Python need to be on the same baud rate, which you set on this line of code. OK, the complete Python code to read the Arduino data from the serial port is here:
+
+import serial #Import Serial Library
+
+arduinoSerialData = serial.Serial('com11',9600) #Create Serial port object called arduinoSerialData
+
+
+while (1==1):
+    if (arduinoSerialData.inWaiting()>0):
+        myData = arduinoSerialData.readline()
+        print myData
